@@ -1,0 +1,6 @@
+# Ignore tests
+tests/
+
+# macOS system file
+*.DS_Store
+**/__pycache__/**
