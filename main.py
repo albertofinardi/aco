@@ -1,4 +1,3 @@
-import numpy as np
 import argparse
 import time
 import os
@@ -10,8 +9,9 @@ from utils.visualization import plot_tsp_solution, plot_convergence, plot_pherom
 from utils.tsp_parser import load_tsp_data
 
 def main():
-    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Ant Colony Optimization for TSP')
+
+    # General options
     parser.add_argument('--instance', type=str, default='berlin52', 
                         choices=list(TSP_INSTANCES.keys()),
                         help='TSP instance name')
@@ -57,7 +57,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Load TSP instance
     if args.instance in TSP_INSTANCES:
         instance_data = TSP_INSTANCES[args.instance]
         tsp_file = instance_data['file']
@@ -81,18 +80,14 @@ def main():
         print(f"Unknown instance: {args.instance}")
         return
     
-    # Create graph from coordinates
     graph = Graph(coordinates=coordinates)
     
-    # Set thread count
     num_threads = 1 if args.no_threading else args.threads
     
-    # Determine visualization settings
     show_tour = args.show_tour and not args.no_visualization
     show_ants = args.show_ants and not args.no_visualization
     show_pheromone_matrix = args.show_pheromone_matrix and not args.no_visualization
     
-    # Configure ACO algorithm
     aco = ACO(
         graph=graph,
         colony_size=args.colony_size,
@@ -105,13 +100,11 @@ def main():
         show_tour=show_tour,
         show_ants=show_ants,
         show_pheromone=show_pheromone_matrix,
-        num_threads=num_threads  # Pass the thread count to ACO
+        num_threads=num_threads
     )
     
-    # Set pheromone visualization in ant visualizer
     aco.show_pheromones_in_ant_viz = args.show_pheromones
     
-    # Run ACO
     has_local_search = " + LS" if args.local_search else ""
     print(f"\nRunning {args.algorithm}{has_local_search} with alpha={args.alpha}, beta={args.beta}, evaporation={args.evaporation}")
     print(f"Visualization: {'None' if args.no_visualization else f'Tour={show_tour}, Ants={show_ants}, Pheromone Matrix={show_pheromone_matrix}'}")
@@ -121,7 +114,6 @@ def main():
     best_tour, best_length = aco.run(max_iterations=args.iterations)
     end_time = time.time()
     
-    # Print results
     print(f"\nResults:")
     print(f"Best tour length: {best_length}")
     if optimal_length:
@@ -129,35 +121,27 @@ def main():
         print(f"Gap to optimal: {abs(gap):.2f}%")
     print(f"Time taken: {end_time - start_time:.2f} seconds")
     
-    # Ensure results directory exists
     results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     os.makedirs(results_dir, exist_ok=True)
     
-    # Visualize results if enabled
     if not args.no_final_plots:
-        # Plot TSP solution
         plot_name = args.plot_name if args.plot_name else args.instance
         solution_plot = plot_tsp_solution(
             coordinates, best_tour, 
             title=f"{plot_name} - Best Tour Length: {best_length:.2f}"
         )
-        print(f"Tour: {coordinates, best_tour}")
         solution_plot.savefig(os.path.join(results_dir, f"{plot_name}_solution.png"))
         
-        # Plot convergence
         convergence_plot = plot_convergence(
             aco.convergence_history,
             title=f"Convergence for {plot_name} using {args.algorithm} {has_local_search}"
         )
-        print(f"Convergence history: {aco.convergence_history}")
         convergence_plot.savefig(os.path.join(results_dir, f"{plot_name}_convergence.png"))
         
-        # Plot final pheromone levels
         pheromone_plot = plot_pheromone_heatmap(
             aco.pheromone_manager.pheromone_matrix,
             title=f"Final Pheromone Levels for {plot_name}"
         )
-        print(f"Pheromone: {aco.pheromone_manager.pheromone_matrix}")
         pheromone_plot.savefig(os.path.join(results_dir, f"{plot_name}_pheromone.png"))
         
         print(f"Plots saved to '{results_dir}' directory")

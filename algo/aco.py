@@ -1,9 +1,3 @@
-"""
-Optimized ACO Implementation with Better Threading Model
-
-This implementation addresses performance issues in the multithreaded ACO algorithm.
-"""
-
 import numpy as np
 from tqdm import tqdm
 import time
@@ -51,10 +45,9 @@ class ACO:
         self.show_ants = show_ants
         self.show_pheromone = show_pheromone
         
-        # Determine if we should use multithreading
         self.num_threads = num_threads
         if num_threads is None or num_threads <= 0:
-            self.num_threads = 1  # Default to single thread if not specified
+            self.num_threads = 1
         elif num_threads == 1:
             print("Running in single-threaded mode")
         else:
@@ -62,44 +55,35 @@ class ACO:
             self.num_threads = min(num_threads, max_threads)
             print(f"Running with {self.num_threads} threads")
         
-        # For very small problem sizes, force single-threaded operation
         if graph.num_cities < 20 and self.num_threads > 1:
             print(f"Small problem size ({graph.num_cities} cities) detected. Forcing single-threaded operation for better performance.")
             self.num_threads = 1
         
-        # Determine batch size for optimal threading
         if self.num_threads > 1:
-            # Batch size calculation: aim for at least 1000 operations per thread
             self.batch_size = max(1, (graph.num_cities * graph.num_cities) // (self.num_threads * 1000))
             print(f"ACO using batch size of {self.batch_size} for parallel operations")
         else:
             self.batch_size = 1
         
-        # Use process-based parallelism for larger problems if multiple threads specified
         self.use_processes = False
         if self.num_threads > 1 and graph.num_cities > 100:
             self.use_processes = True
             print("Large problem detected. Using process-based parallelism for better performance.")
         
-        # Initialize colony with thread count
         colony_size = colony_size if colony_size is not None else graph.num_cities
         self.colony = Colony(graph, colony_size, self.num_threads)
         
-        # Initialize pheromone manager
         self.pheromone_manager = PheromoneManager(
             graph.num_cities, initial_pheromone, evaporation_rate
         )
         
-        # Best solution tracking
         self.best_tour = None
         self.best_tour_length = float('inf')
         self.convergence_history = []
         
-        # Visualization
         self.viz_manager = None
-        self.show_pheromones_in_ant_viz = True  # For ant visualization
+        self.show_pheromones_in_ant_viz = True
         
-        # Performance tracking
         self.construction_time = 0
         self.local_search_time = 0
         self.pheromone_update_time = 0
@@ -117,7 +101,6 @@ class ACO:
         """
         from algo.local_search import two_opt, parallel_batch_two_opt
         
-        # Import here to avoid circular imports
         try:
             from utils.visualization_manager import VisualizationManager
         except ImportError:
@@ -126,12 +109,10 @@ class ACO:
             self.show_ants = False
             self.show_pheromone = False
         
-        # Initialize visualization manager if coordinates are available
         if self.graph.coordinates is not None and (self.show_tour or self.show_ants or self.show_pheromone):
             try:
                 self.viz_manager = VisualizationManager(self.graph.coordinates)
                 
-                # Enable requested visualizations
                 if self.show_tour:
                     self.viz_manager.enable_tour_visualization(
                         title=f"{self.algorithm_type} Tour Progress - Alpha:{self.alpha} Beta:{self.beta}"
@@ -155,12 +136,9 @@ class ACO:
                 traceback.print_exc()
                 self.viz_manager = None
         
-        # For tracking progress
         progress_bar = tqdm(range(max_iterations))
         
-        # Store the initial pheromone matrix for visualization
         if self.show_pheromone and self.viz_manager and hasattr(self.viz_manager, 'pheromone_visualizer') and self.viz_manager.pheromone_visualizer:
-            # Force an update of the initial pheromone matrix
             self.viz_manager.update_pheromone(
                 self.pheromone_manager.pheromone_matrix,
                 0,  # Iteration 0
@@ -172,15 +150,11 @@ class ACO:
         for iteration in progress_bar:
             iteration_start = time.time()
             
-            # Reset ants for a new iteration
             self.colony.reset_ants()
             
-            # Step-by-step construction with visualization
             construction_start = time.time()
             
-            # Determine construction method based on visualization needs
             if self.show_ants:
-                # For visualization, use step-by-step construction
                 all_complete = False
                 construction_steps = 0
                 
@@ -189,20 +163,16 @@ class ACO:
                         self.pheromone_manager.pheromone_matrix, self.alpha, self.beta
                     )
                     
-                    # Only update visualization every few steps to maintain performance
                     construction_steps += 1
                     if construction_steps % max(1, int(5 / self.visualization_speed)) == 0:
                         if self.viz_manager:
                             try:
-                                # Get current state for visualization
                                 ant_positions = self.colony.get_ant_positions()
                                 ant_paths = self.colony.get_ant_paths()
                                 
-                                # Use the best tour found so far for visualization
                                 current_best_tour = self.best_tour if self.best_tour is not None else []
                                 current_best_length = self.best_tour_length if self.best_tour is not None else float('inf')
                                 
-                                # Update ant visualization
                                 self.viz_manager.update_ants(
                                     current_best_tour,
                                     current_best_length,
@@ -214,22 +184,17 @@ class ACO:
                             except Exception as e:
                                 print(f"Error updating ant visualization: {e}")
                 
-                # After construction, get the final tours and lengths
                 tours = [ant.tour for ant in self.colony.ants]
                 tour_lengths = [self.graph.total_distance(tour) for tour in tours]
             else:
-                # For non-visualization runs, optimize for speed
                 if self.num_threads > 1:
-                    # Use parallel construction
                     tours, tour_lengths = self.colony.construct_solutions(
                         self.pheromone_manager.pheromone_matrix, self.alpha, self.beta
                     )
                 else:
-                    # Use optimized sequential construction
                     tours = []
                     tour_lengths = []
-                    
-                    # Construct tours sequentially without threading overhead
+
                     for ant in self.colony.ants:
                         tour, tour_length = ant.construct_solution(
                             self.pheromone_manager.pheromone_matrix, self.alpha, self.beta
@@ -239,45 +204,38 @@ class ACO:
             
             self.construction_time += time.time() - construction_start
             
-            # Apply local search if enabled
             if self.use_local_search:
                 local_search_start = time.time()
                 
                 if self.num_threads > 1:
-                    # Use parallel batch local search
                     if self.use_processes:
                         # Process-based parallelism for larger problems
                         with ProcessPoolExecutor(max_workers=self.num_threads) as executor:
-                            # Partition tours into chunks
                             chunk_size = max(1, len(tours) // self.num_threads)
                             futures = []
                             
-                            # Submit chunks for processing
                             for i in range(0, len(tours), chunk_size):
                                 chunk_tours = tours[i:i+chunk_size]
                                 future = executor.submit(
                                     parallel_batch_two_opt, 
                                     chunk_tours, 
                                     self.graph, 
-                                    100,  # max_iterations
-                                    1  # single thread per process
+                                    100,
+                                    1
                                 )
                                 futures.append((future, i, i+chunk_size))
                             
-                            # Collect results
                             for future, start_idx, end_idx in futures:
                                 chunk_improved_tours, chunk_improved_lengths = future.result()
                                 tours[start_idx:end_idx] = chunk_improved_tours
                                 tour_lengths[start_idx:end_idx] = chunk_improved_lengths
                     else:
-                        # Thread-based parallelism for smaller problems
                         improved_tours, improved_lengths = parallel_batch_two_opt(
                             tours, self.graph, num_threads=self.num_threads
                         )
                         tours = improved_tours
                         tour_lengths = improved_lengths
                 else:
-                    # Sequential local search for single-threaded mode
                     for i, tour in enumerate(tours):
                         improved_tour, improved_length = two_opt(tour, self.graph)
                         tours[i] = improved_tour
@@ -306,18 +264,14 @@ class ACO:
                 )
             self.pheromone_update_time += time.time() - pheromone_start
             
-            # Record progress
             self.convergence_history.append(self.best_tour_length)
             
-            # Update progress bar
             progress_bar.set_description(
                 f"Best: {self.best_tour_length:.2f}, Iteration best: {iteration_best_length:.2f}"
             )
             
-            # Update visualizations
             if self.viz_manager:
                 try:
-                    # Update tour visualization
                     if self.show_tour:
                         self.viz_manager.update_tour(
                             iteration_best_tour,
@@ -327,7 +281,6 @@ class ACO:
                             self.best_tour_length
                         )
                     
-                    # Update ant visualization
                     if self.show_ants:
                         self.viz_manager.update_ants(
                             self.best_tour,
@@ -338,19 +291,15 @@ class ACO:
                             self.pheromone_manager.pheromone_matrix if self.show_pheromones_in_ant_viz else None
                         )
                         
-                    # Update pheromone visualization
                     if self.show_pheromone:
-                        # Force a fresh copy of the pheromone matrix
                         pheromone_copy = self.pheromone_manager.pheromone_matrix.copy()
                         
-                        # Calculate pheromone statistics for display
                         min_pheromone = np.min(pheromone_copy[pheromone_copy > 0])
                         max_pheromone = np.max(pheromone_copy)
                         mean_pheromone = np.mean(pheromone_copy[pheromone_copy > 0])
                         
                         extra_info = f"Pheromone range: {min_pheromone:.4f} - {max_pheromone:.4f} (mean: {mean_pheromone:.4f})"
                         
-                        # Update the visualization
                         self.viz_manager.update_pheromone(
                             pheromone_copy,
                             iteration,
@@ -361,19 +310,16 @@ class ACO:
                 except Exception as e:
                     print(f"Error updating visualizations: {e}")
             
-            # Check for convergence
             if convergence_threshold and iteration > 1:
                 if abs(self.convergence_history[-2] - self.convergence_history[-1]) < convergence_threshold:
                     print(f"Converged after {iteration+1} iterations")
                     break
             
-            # Control visualization speed
             iteration_time = time.time() - iteration_start
             target_time = 0.5 / self.visualization_speed
             if iteration_time < target_time:
                 time.sleep(target_time - iteration_time)
         
-        # Print performance statistics
         total_time = self.construction_time + self.local_search_time + self.pheromone_update_time
         print(f"\nPerformance statistics:")
         print(f"  Solution construction: {self.construction_time:.2f}s ({self.construction_time/total_time*100:.1f}%)")
@@ -382,7 +328,6 @@ class ACO:
         print(f"  Total algorithm time: {total_time:.2f}s")
         print(f"  Using {self.num_threads} thread{'s' if self.num_threads > 1 else ''} for parallel processing")
         
-        # Save final visualizations
         if self.viz_manager:
             try:
                 self.viz_manager.save_visualizations(f"{self.algorithm_type}_a{self.alpha}_b{self.beta}")

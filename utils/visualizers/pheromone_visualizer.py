@@ -19,30 +19,23 @@ class PheromoneVisualizer:
         self.num_cities = num_cities
         self.title = title
         self.last_update_time = time.time()
-        self.update_interval = 0.1  # Seconds between updates
+        self.update_interval = 0.1
         
-        # Don't force a specific backend - use the system default
-        print("Using matplotlib backend:", matplotlib.get_backend())
+        print("Using matplotlib backend:", matplotlib.get_backend()) # MacOS related issue
         
-        # Set up a single figure for pheromone matrix only
         self.fig, self.ax = plt.subplots(figsize=(10, 8))
             
-        # Initialize pheromone matrix display
         self.pheromone_image = None
         self.colorbar = None
         
-        # Text information
         self.iteration_text = None
         self.info_text = None
         
-        # Initialize previous data for change detection
         self.prev_pheromone = None
         self.prev_iteration = -1
         
-        # Set up the initial plot
         self._setup_plot()
-        
-        # Make the plot interactive
+
         plt.ion()
         self.fig.canvas.draw()
         plt.show(block=False)
@@ -53,39 +46,32 @@ class PheromoneVisualizer:
         """Set up the initial plot elements."""
         print("Setting up pheromone visualization...")
         
-        # Create initial data for display
         initial_data = np.ones((self.num_cities, self.num_cities))
         np.fill_diagonal(initial_data, 0)  # Zero on diagonal
         self.prev_pheromone = initial_data.copy()
         
-        # Set up the pheromone matrix heatmap
         self.pheromone_image = self.ax.imshow(
             initial_data,
             cmap='viridis',
-            norm=LogNorm(vmin=0.1, vmax=10),  # Log scale works well for pheromone
+            norm=LogNorm(vmin=0.1, vmax=10),
             interpolation='nearest'
         )
         
-        # Add colorbar
         self.colorbar = self.fig.colorbar(self.pheromone_image, ax=self.ax, label='Pheromone Level')
         
-        # Add grid lines to match city indices
         self.ax.set_xticks(np.arange(self.num_cities))
         self.ax.set_yticks(np.arange(self.num_cities))
         self.ax.set_xticklabels(np.arange(self.num_cities))
         self.ax.set_yticklabels(np.arange(self.num_cities))
         
-        # Add minor grid lines between cities
         self.ax.set_xticks(np.arange(-.5, self.num_cities, 1), minor=True)
         self.ax.set_yticks(np.arange(-.5, self.num_cities, 1), minor=True)
         self.ax.grid(which="minor", color="w", linestyle='-', linewidth=0.5, alpha=0.2)
         
-        # Set labels and title
         self.ax.set_title("Pheromone Matrix")
         self.ax.set_xlabel('City j')
         self.ax.set_ylabel('City i')
         
-        # Add text annotations for information
         self.iteration_text = self.ax.text(0.02, 0.98, 'Iteration: 0', transform=self.ax.transAxes,
                                          verticalalignment='top', fontsize=10,
                                          bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
@@ -94,7 +80,6 @@ class PheromoneVisualizer:
                                       verticalalignment='top', fontsize=10,
                                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
         
-        # Set main title
         self.fig.suptitle(self.title, fontsize=14)
         
         plt.tight_layout()
@@ -112,45 +97,35 @@ class PheromoneVisualizer:
             best_tour_length: Length of the best tour
             extra_info: Additional information to display
         """
-        # Check if this is a duplicate update or too frequent
         current_time = time.time()
         if (iteration == self.prev_iteration and np.array_equal(pheromone_matrix, self.prev_pheromone)) or \
            (current_time - self.last_update_time < self.update_interval):
             return
             
-        # Store current data for next comparison
         self.prev_pheromone = pheromone_matrix.copy()
         self.prev_iteration = iteration
         self.last_update_time = current_time
         
         try:
-            # Make a defensive copy of the pheromone matrix
             matrix_to_display = pheromone_matrix.copy()
             
-            # Ensure minimum positive value for log scale
             min_positive = 1e-10
             matrix_to_display[matrix_to_display <= 0] = min_positive
             
-            # Update pheromone matrix display
             self.pheromone_image.set_data(matrix_to_display)
             
-            # Calculate range for colorbar
             valid_values = matrix_to_display[matrix_to_display > min_positive]
             if len(valid_values) > 0:
                 vmin = max(min_positive, np.min(valid_values))
                 vmax = max(0.1, np.max(valid_values))
-                
-                # Only update if the range has changed significantly
                 current_norm = self.pheromone_image.norm
                 if not isinstance(current_norm, LogNorm) or \
                    (vmin < current_norm.vmin * 0.5 or vmin > current_norm.vmin * 2 or
                     vmax < current_norm.vmax * 0.5 or vmax > current_norm.vmax * 2):
                     self.pheromone_image.norm = LogNorm(vmin=vmin, vmax=vmax)
                     
-                    # Update the colorbar
                     self.colorbar.update_normal(self.pheromone_image)
             
-            # Update text information
             self.iteration_text.set_text(f'Iteration: {iteration}')
             
             if best_tour_length is not None:
@@ -159,11 +134,9 @@ class PheromoneVisualizer:
                     info_text += f'\n{extra_info}'
                 self.info_text.set_text(info_text)
             
-            # Redraw the plot
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             
-            # Small pause to allow the plot to update
             plt.pause(0.001)
             
         except Exception as e:

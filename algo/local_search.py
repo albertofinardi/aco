@@ -14,7 +14,6 @@ def two_opt_swap(tour, i, j):
     Returns:
         New tour after the swap
     """
-    # Create a new tour with the segment between i and j reversed
     new_tour = tour.copy()
     new_tour[i:j+1] = tour[i:j+1][::-1]
     return new_tour
@@ -46,7 +45,6 @@ def two_opt(tour, graph, max_iterations=100):
                 if j - i == 1:
                     continue
                 
-                # Try a 2-opt swap
                 new_tour = two_opt_swap(best_tour, i, j)
                 new_length = graph.total_distance(new_tour)
                 
@@ -75,16 +73,13 @@ def parallel_batch_two_opt(tours, graph, max_iterations=100, num_threads=None):
     Returns:
         List of improved tours and their lengths
     """
-    # Set up threading
     max_threads = multiprocessing.cpu_count()
     
-    # If num_threads is None, use the default strategy
     if num_threads is None:
         num_threads = min(len(tours), max_threads)
     else:
-        # Otherwise, ensure num_threads is valid
         num_threads = min(num_threads, max_threads)
-        num_threads = max(1, num_threads)  # Ensure at least 1 thread
+        num_threads = max(1, num_threads)
     
     improved_tours = [None] * len(tours)
     improved_lengths = [None] * len(tours)

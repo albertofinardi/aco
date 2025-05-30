@@ -1,9 +1,5 @@
-"""
-Optimized Colony class with improved threading performance.
-"""
-
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import multiprocessing
 from .ant import Ant
@@ -23,23 +19,19 @@ class Colony:
         self.graph = graph
         self.colony_size = colony_size if colony_size is not None else graph.num_cities
         
-        # Set up threading
         if num_threads is None or num_threads <= 0:
-            self.num_threads = 1  # Default to single thread if not specified
+            self.num_threads = 1
         else:
             max_threads = multiprocessing.cpu_count()
             self.num_threads = min(num_threads, max_threads)
         
-        # Determine if parallelism is worth it based on problem size
         self.use_parallelism = self.num_threads > 1 and self.colony_size >= self.num_threads
         
-        # If parallelism is worth it, determine batch size for optimal threading
         if self.use_parallelism:
             # Calculate the minimum work per thread to make parallelism beneficial
-            # Rule of thumb: at least 10,000 operations per thread for TSP
             min_work_per_thread = 10000
             
-            # Estimated work for a single ant = O(n²) where n is number of cities
+            # Estimated work for a single ant = O(n^2) where n is number of cities
             work_per_ant = self.graph.num_cities ** 2
             
             # Batch size = min work per thread / work per ant
@@ -55,11 +47,9 @@ class Colony:
             print(f"Colony initialized with {self.colony_size} ants")
             print(f"Colony using {self.num_threads} threads with batch size {self.batch_size}")
         else:
-            # If not using parallelism, optimize for sequential execution
             print(f"Colony initialized with {self.colony_size} ants (sequential execution)")
             self.batch_size = 1
-        
-        # Create ants with different starting positions
+
         self.reset_ants()
         
         self.best_tour = None
@@ -93,7 +83,6 @@ class Colony:
                 results.append((ant_idx, tour, tour_length))
             except Exception as e:
                 print(f"Error in ant construction for ant {ant_idx}: {e}")
-                # Return a fallback result
                 results.append((ant_idx, [], float('inf')))
         return results
     
@@ -113,17 +102,13 @@ class Colony:
         tours = [None] * self.colony_size
         tour_lengths = [None] * self.colony_size
         
-        # Check if problem size is suitable for parallelism
         if self.use_parallelism:
-            # Split ants into batches for parallel processing
             ant_batches = []
             for i in range(0, self.colony_size, self.batch_size):
                 end = min(i + self.batch_size, self.colony_size)
                 ant_batches.append(list(range(i, end)))
-            
-            # Run solution construction in parallel
+
             with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-                # Submit all batches
                 future_to_batch = {}
                 for batch in ant_batches:
                     future = executor.submit(
@@ -135,25 +120,21 @@ class Colony:
                     )
                     future_to_batch[future] = batch
                 
-                # Process results as they complete
                 for future in concurrent.futures.as_completed(future_to_batch):
                     batch_results = future.result()
                     for ant_idx, tour, tour_length in batch_results:
                         tours[ant_idx] = tour
                         tour_lengths[ant_idx] = tour_length
                         
-                        # Update best tour if needed
                         if tour_length < self.best_tour_length:
                             self.best_tour = tour.copy()
                             self.best_tour_length = tour_length
         else:
-            # Sequential execution for better performance on small problems
             for i, ant in enumerate(self.ants):
                 tour, tour_length = ant.construct_solution(pheromone_matrix, alpha, beta)
                 tours[i] = tour
                 tour_lengths[i] = tour_length
                 
-                # Update best tour if needed
                 if tour_length < self.best_tour_length:
                     self.best_tour = tour.copy()
                     self.best_tour_length = tour_length
@@ -176,21 +157,16 @@ class Colony:
         all_complete = True
         
         for ant in self.ants:
-            # If the ant hasn't completed its tour yet
             if len(ant.tour) < self.graph.num_cities:
                 all_complete = False
                 
-                # If the ant still has cities to visit
                 if not np.all(ant.visited):
-                    # Select the next city
                     next_city = ant.select_next_city(pheromone_matrix, alpha, beta)
                     
-                    # Visit the next city
                     ant.tour.append(next_city)
                     ant.visited[next_city] = True
                     ant.current_city = next_city
                 else:
-                    # Calculate tour length once the tour is complete
                     ant.tour_length = self.graph.total_distance(ant.tour)
         
         return all_complete

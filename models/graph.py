@@ -19,7 +19,6 @@ class Graph:
         if coordinates is not None:
             self.coordinates = np.array(coordinates)
             self.num_cities = len(coordinates)
-            # Compute distances between all pairs of points
             self.distances = squareform(pdist(self.coordinates, 'euclidean'))
         elif distance_matrix is not None:
             self.distances = np.array(distance_matrix)
@@ -47,6 +46,5 @@ class Graph:
         total = 0
         for i in range(len(tour) - 1):
             total += self.distances[tour[i], tour[i+1]]
-        # Add distance from last to first city to complete the loop
         total += self.distances[tour[-1], tour[0]]
         return total

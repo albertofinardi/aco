@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
 
 def plot_tsp_solution(coordinates, tour, title="TSP Solution"):
     """
@@ -12,10 +11,8 @@ def plot_tsp_solution(coordinates, tour, title="TSP Solution"):
     """
     plt.figure(figsize=(10, 8))
     
-    # Plot cities
     plt.scatter(coordinates[:, 0], coordinates[:, 1], c='red', s=50)
     
-    # Plot tour
     for i in range(len(tour) - 1):
         city_i, city_j = tour[i], tour[i+1]
         plt.plot(
@@ -24,15 +21,13 @@ def plot_tsp_solution(coordinates, tour, title="TSP Solution"):
             'b-'
         )
     
-    # Close the loop
     city_i, city_j = tour[-1], tour[0]
     plt.plot(
         [coordinates[city_i, 0], coordinates[city_j, 0]],
         [coordinates[city_i, 1], coordinates[city_j, 1]],
         'b-'
     )
-    
-    # Add city labels
+
     for i, (x, y) in enumerate(coordinates):
         plt.text(x, y, str(i), fontsize=12)
     

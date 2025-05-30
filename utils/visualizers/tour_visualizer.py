@@ -1,7 +1,5 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import time
-from matplotlib.collections import LineCollection
 
 class TourVisualizer:
     """Visualizer for real-time TSP solution updates."""
@@ -24,29 +22,23 @@ class TourVisualizer:
         self.best_tour = None
         self.start_time = time.time()
         
-        # Set up the initial plot
         self._setup_plot()
         
-        # Make the plot interactive
         plt.ion()
         plt.show(block=False)
     
     def _setup_plot(self):
         """Set up the initial plot elements."""
-        # Plot cities
         self.ax.scatter(self.coordinates[:, 0], self.coordinates[:, 1], 
                        c='red', s=50, zorder=10)
         
-        # Add city labels
         for i, (x, y) in enumerate(self.coordinates):
             self.ax.text(x, y, str(i), fontsize=8, ha='center', va='center',
                         bbox=dict(boxstyle="circle", fc="white", ec="black", alpha=0.7),
                         zorder=15)
         
-        # Initialize the tour line
         self.tour_line, = self.ax.plot([], [], 'b-', linewidth=1.5, alpha=0.8, zorder=5)
         
-        # Add text annotations for information
         self.iteration_text = self.ax.text(0.02, 0.98, '', transform=self.ax.transAxes,
                                           verticalalignment='top', fontsize=10,
                                           bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
@@ -55,13 +47,10 @@ class TourVisualizer:
                                         verticalalignment='top', fontsize=10,
                                         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
         
-        # Set labels and title
         self.ax.set_title(self.title)
         self.ax.set_xlabel('X Coordinate')
         self.ax.set_ylabel('Y Coordinate')
         self.ax.grid(True, linestyle='--', alpha=0.7)
-        
-        # Set reasonable margins
         self.ax.margins(0.1)
         
         plt.tight_layout()
@@ -81,31 +70,25 @@ class TourVisualizer:
             self.best_tour = best_tour
             self.best_length = best_length
         else:
-            # If no best tour is provided, compare with the current best
             if tour_length < self.best_length:
                 self.best_tour = tour.copy()
                 self.best_length = tour_length
         
-        # Update the tour line
         x_tour = [self.coordinates[city, 0] for city in tour]
         y_tour = [self.coordinates[city, 1] for city in tour]
         
-        # Add the connection back to the starting city
         x_tour.append(self.coordinates[tour[0], 0])
         y_tour.append(self.coordinates[tour[0], 1])
         
         self.tour_line.set_data(x_tour, y_tour)
         
-        # Update text information
         current_time = time.time() - self.start_time
         self.iteration_text.set_text(f'Iteration: {iteration} | Time: {current_time:.1f}s')
         self.length_text.set_text(f'Current: {tour_length:.1f} | Best: {self.best_length:.1f}')
         
-        # Redraw the plot
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-        
-        # Small pause to allow the plot to update
+
         plt.pause(0.01)
     
     def save(self, filename):

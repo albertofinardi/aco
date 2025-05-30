@@ -15,10 +15,8 @@ class PheromoneManager:
         self.num_cities = num_cities
         self.evaporation_rate = evaporation_rate
         
-        # Initialize pheromone matrix
         self.pheromone_matrix = np.ones((num_cities, num_cities)) * initial_pheromone
         
-        # No self-loops
         np.fill_diagonal(self.pheromone_matrix, 0)
     
     def evaporate(self):
@@ -34,16 +32,13 @@ class PheromoneManager:
             tour_length: Total length of the tour
             deposit_amount: Base amount to deposit
         """
-        # Calculate deposit amount (inversely proportional to tour length)
         amount = deposit_amount / tour_length
         
-        # Deposit pheromone on all edges of the tour
         for i in range(len(tour) - 1):
             city_i, city_j = tour[i], tour[i+1]
             self.pheromone_matrix[city_i, city_j] += amount
-            self.pheromone_matrix[city_j, city_i] += amount  # For undirected graph
+            self.pheromone_matrix[city_j, city_i] += amount 
         
-        # Close the loop
         city_i, city_j = tour[-1], tour[0]
         self.pheromone_matrix[city_i, city_j] += amount
         self.pheromone_matrix[city_j, city_i] += amount
